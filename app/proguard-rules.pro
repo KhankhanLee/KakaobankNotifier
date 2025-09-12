@@ -19,3 +19,28 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Gson model keep (Transaction uses reflection)
+-keep class com.kakaobank.notifier.Transaction { *; }
+-keepattributes *Annotation*
+
+# Retrofit/OkHttp keep rules (common)
+-dontwarn okio.**
+-dontwarn javax.annotation.**
+-keep class retrofit2.** { *; }
+-keep class okhttp3.** { *; }
+-keep interface retrofit2.http.* { *; }
+
+# Keep Kotlin metadata for reflection stability
+-keep class kotlin.Metadata { *; }
+
+# OkHttp optional platforms warnings suppression
+-dontwarn org.bouncycastle.jsse.BCSSLParameters
+-dontwarn org.bouncycastle.jsse.BCSSLSocket
+-dontwarn org.bouncycastle.jsse.provider.BouncyCastleJsseProvider
+-dontwarn org.conscrypt.Conscrypt$Version
+-dontwarn org.conscrypt.Conscrypt
+-dontwarn org.conscrypt.ConscryptHostnameVerifier
+-dontwarn org.openjsse.javax.net.ssl.SSLParameters
+-dontwarn org.openjsse.javax.net.ssl.SSLSocket
+-dontwarn org.openjsse.net.ssl.OpenJSSE

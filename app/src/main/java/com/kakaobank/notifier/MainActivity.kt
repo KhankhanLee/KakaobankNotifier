@@ -71,6 +71,11 @@ private fun MainScreen() {
     val activity = context as Activity
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    
+    // 권한 상태 실시간 확인
+    val permissionStatus by remember {
+        derivedStateOf { PermissionUtils.getPermissionStatus(context) }
+    }
 
     Scaffold(
         topBar = {
@@ -122,12 +127,12 @@ private fun MainScreen() {
 
             val actions = remember {
                 listOf(
-                    QuickAction("🔔", "알림 접근") {
+                    QuickAction("🔔", "알림 접근", isEnabled = permissionStatus != PermissionStatus.GRANTED) {
                         val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         context.startActivity(intent)
                     },
-                    QuickAction("📣", "알림 권한") {
+                    QuickAction("📣", "알림 권한", isEnabled = permissionStatus != PermissionStatus.GRANTED) {
                         if (Build.VERSION.SDK_INT >= 33) {
                             ActivityCompat.requestPermissions(
                                 activity,
@@ -140,39 +145,6 @@ private fun MainScreen() {
                                     "Android 13 이상에서 필요한 권한입니다.",
                                     duration = SnackbarDuration.Short
                                 )
-                            }
-                        }
-                    },
-                    QuickAction("🚀", "테스트 전송") {
-                        scope.launch {
-                            val nowDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                            val nowTime = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
-                            val tx = Transaction(
-                                date = nowDate,
-                                time = nowTime,
-                                type = "입금",
-                                amount = "100,000",
-                                balance = "1,000,000",
-                                description = "앱 테스트 전송"
-                            )
-
-                            Log.d("MainActivity", "전송할 데이터: $tx")
-
-                            try {
-                                val res = ApiClient.apiService.sendTransaction(tx)
-                                Log.d("MainActivity", "응답 코드: ${res.code()}")
-
-                                if (res.isSuccessful) {
-                                    val responseBody = res.body() ?: "응답 없음"
-                                    Log.d("MainActivity", "응답 본문: $responseBody")
-                                    snackbarHostState.showSnackbar("전송 성공", duration = SnackbarDuration.Short)
-                                } else {
-                                    Log.e("MainActivity", "응답 실패: ${res.code()}")
-                                    snackbarHostState.showSnackbar("전송 실패: ${res.code()}", duration = SnackbarDuration.Short)
-                                }
-                            } catch (e: Exception) {
-                                Log.e("MainActivity", "전송 오류: ${e.message}", e)
-                                snackbarHostState.showSnackbar("오류: ${e.message}", duration = SnackbarDuration.Short)
                             }
                         }
                     }
@@ -188,7 +160,7 @@ private fun MainScreen() {
                     .heightIn(min = 0.dp, max = 360.dp)
             ) {
                 items(actions) { a ->
-                    ActionCard(icon = a.icon, label = a.label, onClick = a.onClick)
+                    ActionCard(icon = a.icon, label = a.label, isEnabled = a.isEnabled, onClick = a.onClick)
                 }
             }
 
@@ -202,6 +174,11 @@ private fun MainScreen() {
             )
             Spacer(Modifier.height(12.dp))
 
+            // 권한 상태 표시
+            PermissionStatusCard(permissionStatus = permissionStatus)
+            
+            Spacer(Modifier.height(16.dp))
+
             // 실시간 TxStore 구독하여 표시
             val txs by TxStore.transactions.collectAsState()
 
@@ -211,24 +188,21 @@ private fun MainScreen() {
             ) {
                 if (txs.isEmpty()) {
                     item {
-                        Text(
-                            text = "아직 거래 알림이 없습니다.",
-                            color = Color(0xFF777777),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        EmptyStateCard(permissionStatus = permissionStatus)
                     }
                 } else {
                     items(txs) { t ->
                         val amountText = if (t.amount.isNotBlank()) "₩${t.amount}" else "-"
                         val senderOrType = if (t.type.isNotBlank()) t.type else "거래"
                         val memo = t.description
-                        val timeText = t.time
+                        val timeText = formatTime(t.time)
                         TxCard(
                             ui = TxUi(
                                 amount = amountText,
                                 sender = senderOrType,
                                 memo = memo,
-                                time = timeText
+                                time = timeText,
+                                type = t.type,
                             )
                         )
                     }
@@ -244,6 +218,7 @@ private fun MainScreen() {
 private data class QuickAction(
     val icon: String,
     val label: String,
+    val isEnabled: Boolean = true,
     val onClick: () -> Unit
 )
 
@@ -252,13 +227,14 @@ private data class QuickAction(
 private fun ActionCard(
     icon: String,
     label: String,
+    isEnabled: Boolean = true,
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
+        onClick = if (isEnabled) onClick else { {} },
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isEnabled) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f)
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier
@@ -272,14 +248,27 @@ private fun ActionCard(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(icon, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+            Text(
+                icon, 
+                fontWeight = FontWeight.SemiBold, 
+                color = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
             Spacer(Modifier.height(8.dp))
             Text(
                 label,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isEnabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 textAlign = TextAlign.Center
             )
+            if (!isEnabled) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "완료",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color(0xFF4CAF50),
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -288,11 +277,16 @@ private data class TxUi(
     val amount: String,
     val sender: String,
     val memo: String,
-    val time: String
+    val time: String,
+    val type: String = ""
 )
 
 @Composable
 private fun TxCard(ui: TxUi) {
+    val isDeposit = ui.type == "입금"
+    val typeColor = if (isDeposit) Color(0xFF4CAF50) else Color(0xFFF44336)
+    val typeIcon = if (isDeposit) "↗" else "↙"
+    
     Card(
         shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -306,19 +300,31 @@ private fun TxCard(ui: TxUi) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 아바타
+            // 거래 타입별 아이콘
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(MaterialTheme.shapes.small)
-                    .background(Color(0xFFE0E0E0))
-            )
+                    .background(typeColor.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    typeIcon,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = typeColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
 
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                Text(ui.amount, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text(
+                    ui.amount, 
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = typeColor
+                )
                 Text(ui.sender, style = MaterialTheme.typography.bodyLarge, color = Color(0xFF444444))
                 Text(ui.memo, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF666666))
             }
@@ -331,13 +337,102 @@ private fun TxCard(ui: TxUi) {
             )
         }
 
-        // 좌측 포인트 스트립(토마토레드)
+        // 거래 타입별 색상 스트립
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.9f))
+                .background(typeColor.copy(alpha = 0.9f))
         )
+    }
+}
+
+@Composable
+private fun PermissionStatusCard(permissionStatus: PermissionStatus) {
+    val (statusText, statusColor, statusIcon) = when (permissionStatus) {
+        PermissionStatus.GRANTED -> Triple("모든 권한이 허용되었습니다", Color(0xFF4CAF50), "✅")
+        PermissionStatus.NEEDS_NOTIFICATION_ACCESS -> Triple("알림 접근 권한이 필요합니다", Color(0xFFFF9800), "⚠️")
+        PermissionStatus.NEEDS_NOTIFICATION_PERMISSION -> Triple("알림 권한이 필요합니다", Color(0xFFFF9800), "⚠️")
+        PermissionStatus.DENIED -> Triple("권한이 거부되었습니다", Color(0xFFF44336), "❌")
+    }
+    
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = statusColor.copy(alpha = 0.1f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                statusIcon,
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                statusText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = statusColor,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyStateCard(permissionStatus: PermissionStatus) {
+    val (title, description) = when (permissionStatus) {
+        PermissionStatus.GRANTED -> "거래 알림을 기다리는 중..." to "카카오뱅크에서 입출금 알림이 오면 자동으로 기록됩니다."
+        else -> "권한을 허용해주세요" to "알림 접근 권한을 허용하면 거래 내역이 여기에 표시됩니다."
+    }
+    
+    Card(
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "💰",
+                style = MaterialTheme.typography.displayLarge
+            )
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF666666),
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+}
+
+private fun formatTime(timeString: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("a h:mm", Locale.getDefault())
+        val date = inputFormat.parse(timeString)
+        outputFormat.format(date ?: Date())
+    } catch (e: Exception) {
+        timeString
     }
 }
 

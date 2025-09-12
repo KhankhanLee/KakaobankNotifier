@@ -24,15 +24,16 @@ android {
     }
     signingConfigs {
         release {
-            storeFile file('../release.jks')
-            storePassword 'onestore123!'
-            keyAlias 'kakaobank'
-            keyPassword 'onestore123!'
+            storeFile file(System.getenv('KS_PATH') ?: project.findProperty('KS_PATH') ?: '../release.jks')
+            storePassword System.getenv('KS_STORE_PASSWORD') ?: project.findProperty('KS_STORE_PASSWORD') ?: ''
+            keyAlias System.getenv('KS_KEY_ALIAS') ?: project.findProperty('KS_KEY_ALIAS') ?: 'kakaobank'
+            keyPassword System.getenv('KS_KEY_PASSWORD') ?: project.findProperty('KS_KEY_PASSWORD') ?: ''
         }
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }

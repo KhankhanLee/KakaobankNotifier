@@ -3,6 +3,7 @@ package com.kakaobank.notifier
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
+import java.lang.Class
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
@@ -12,7 +13,12 @@ object ApiClient {
     private const val BASE_URL = "https://kakaobanksheetconnect-production.up.railway.app/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        val isDebug: Boolean = try {
+            val clazz: Class<*> = Class.forName("com.kakaobank.notifier.BuildConfig")
+            val field = clazz.getField("DEBUG")
+            field.getBoolean(null)
+        } catch (e: Exception) { false }
+        level = if (isDebug) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
     }
 
     private val okHttpClient = OkHttpClient.Builder()
