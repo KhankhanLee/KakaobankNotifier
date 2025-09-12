@@ -3,18 +3,13 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:scaleX="0.9" android:scaleY="0.9" android:translateX="5.4" android:translateY="5.4">
+    <group android:scaleX="0.8" android:scaleY="0.8" android:translateX="10.8" android:translateY="10.8">
+        <!-- BN 텍스트 -->
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M30,30h48a6,6 0 0 1 6,6v36a6,6 0 0 1 -6,6H30a6,6 0 0 1 -6,-6V36a6,6 0 0 1 6,-6z"/>
-        <path
-            android:fillColor="#FF6F61"
-            android:pathData="M36,36h36a0,0 0 0 1 0,0v30a0,0 0 0 1 0,0H36a0,0 0 0 1 0,0V36a0,0 0 0 1 0,0z"/>
+            android:pathData="M20,20h12v8h-4v24h-4V28h-4V20z"/>
         <path
             android:fillColor="#FFFFFF"
-            android:pathData="M42,42h8v18h-8z"/>
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M54,42h8c5.523,0 10,4.477 10,10s-4.477,10 -10,10h-8zM62,58c3.314,0 6,-2.686 6,-6s-2.686,-6 -6,-6h-4v12z"/>
+            android:pathData="M40,20h12c6.627,0 12,5.373 12,12s-5.373,12 -12,12h-4v-8h4c2.209,0 4,-1.791 4,-4s-1.791,-4 -4,-4h-4V20z"/>
     </group>
 </vector>
