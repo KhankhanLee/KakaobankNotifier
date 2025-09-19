@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["jdk11", "maven"]
+
+[phases.install]
+cmds = ["./mvnw clean package -DskipTests"]
+
+[phases.build]
+cmds = ["echo 'Build completed'"]
+
+[start]
+cmd = "java -jar target/kakaobank-sheet-sync-1.0.0.jar"

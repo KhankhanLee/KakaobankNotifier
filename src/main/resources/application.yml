@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kakaobank-sheet-sync
+
+# Google Sheets 설정
+google:
+  sheets:
+    # 구글 시트 ID (URL에서 추출)
+    spreadsheet-id: ${GOOGLE_SHEET_ID:ZyQ9cQcdw4jN_YWjXIjYJt9blny6g3Miy1o5TolR3c}
+    # 시트 이름
+    sheet-name: ${GOOGLE_SHEET_NAME:Sheet1}
+    # 서비스 계정 JSON 키 파일 경로
+    credentials-path: ${GOOGLE_CREDENTIALS_PATH:credentials.json}
+
+# 카카오뱅크 알림 설정
+kakaobank:
+  notification:
+    # 알림 수신을 위한 웹훅 엔드포인트
+    webhook-path: /api/notification
+    # 알림 검증을 위한 시크릿 키 (선택사항)
+    secret-key: ${KAKAOBANK_SECRET:}
+
+# 로깅 설정
+logging:
+  level:
+    com.kakaobank.sheetsync: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
